@@ -42,7 +42,7 @@
 	<NcButton v-else
 		:aria-label="t('spreed', 'Show presenter')"
 		:title="t('spreed', 'Show presenter')"
-		class="presenter-overlay--collapse"
+		class="presenter-overlay--collapsed"
 		type="tertiary-no-background"
 		@click="$emit('click')">
 		<template #icon>
@@ -138,6 +138,23 @@ export default {
     &.dragging {
         cursor: grabbing;
     }
+}
+
+.presenter-overlay--collapsed {
+	position: absolute !important;
+	opacity: .7;
+	bottom: 48px;
+	right: 0;
+
+	#call-container:hover & {
+		background-color: rgba(0, 0, 0, 0.1) !important;
+
+		&:hover,
+		&:focus {
+			opacity: 1;
+			background-color: rgba(0, 0, 0, 0.2) !important;
+		}
+	}
 }
 
 :deep(div) {

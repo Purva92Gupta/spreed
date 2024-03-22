@@ -75,12 +75,11 @@
 							:shared-data="sharedDatas[shownRemoteScreenPeerId]"
 							is-big />
 						<!-- presenter overlay -->
-						<PresenterOverlay v-if="shouldShowPresenterOverlay || isPresenterCollapsed"
-							:class="{'presenter-overlay--collapsed': isPresenterCollapsed }"
+						<PresenterOverlay v-if="shouldShowPresenterOverlay"
 							:token="token"
 							:model="shownRemoteScreenCallParticipantModel"
 							:shared-data="sharedDatas[shownRemoteScreenPeerId]"
-							:is-collapsed="isPresenterCollapsed"
+							:is-collapsed="!showPresenterOverlay"
 							@click="toggleShowPresenterOverlay" />
 					</template>
 					<!-- Promoted "autopilot" mode -->
@@ -339,12 +338,8 @@ export default {
 			})
 		},
 
-		isPresenterCollapsed() {
-			return !this.showPresenterOverlay && this.shownRemoteScreenCallParticipantModel.attributes.videoAvailable
-		},
-
 		shouldShowPresenterOverlay() {
-			return this.showPresenterOverlay && this.isModelWithVideo(this.shownRemoteScreenCallParticipantModel)
+			return this.shownRemoteScreenCallParticipantModel.attributes.videoAvailable || this.isModelWithVideo(this.shownRemoteScreenCallParticipantModel)
 
 		},
 
@@ -763,23 +758,6 @@ export default {
 
 	&.blurred {
 		backdrop-filter: blur(25px);
-	}
-}
-
-.presenter-overlay--collapsed {
-	position: absolute !important;
-	opacity: .7;
-	bottom: 48px;
-	right: 0;
-
-	#call-container:hover & {
-		background-color: rgba(0, 0, 0, 0.1) !important;
-
-		&:hover,
-		&:focus {
-			opacity: 1;
-			background-color: rgba(0, 0, 0, 0.2) !important;
-		}
 	}
 }
 
