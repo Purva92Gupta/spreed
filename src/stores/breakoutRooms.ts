@@ -42,18 +42,31 @@ import {
 	switchToBreakoutRoom,
 } from '../services/breakoutRoomsService.ts'
 import store from '../store/index.js'
+import type {
+	Conversation,
+	Participant,
+	BreakoutRoom,
+	broadcastChatMessageParams,
+	configureBreakoutRoomsParams,
+	reorganizeAttendeesParams,
+	switchToBreakoutRoomParams
+} from '../types'
 
+type Payload<T> = T & { token: string }
+type State = {
+	rooms: Record<string, Record<string, BreakoutRoom>>
+}
 export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
-	state: () => ({
+	state: (): State => ({
 		rooms: {},
 	}),
 
 	getters: {
-		breakoutRooms: (state) => (token) => {
+		breakoutRooms: (state) => (token: string): BreakoutRoom[] => {
 			return Object.values(Object(state.rooms[token]))
 		},
 
-		getParentRoomToken: (state) => (token) => {
+		getParentRoomToken: (state) => (token: string): string | undefined => {
 			for (const parentRoomToken in state.rooms) {
 				if (state.rooms[parentRoomToken]?.[token] !== undefined) {
 					return parentRoomToken
@@ -67,15 +80,15 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		 * The breakout rooms API return an array with mixed breakout and parent rooms, we want to update
 		 * breakout rooms in this store and all conversations in conversationsStore.
 		 *
-		 * @param {string} token the parent room token;
-		 * @param {Array<object>|object} conversationOrArray a single conversation or an array of conversations.
+		 * @param token the parent room token;
+		 * @param conversationOrArray a single conversation or an array of conversations.
 		 *
 		 */
-		processConversations(token, conversationOrArray) {
+		processConversations(token: string, conversationOrArray: Conversation | Conversation[]) {
 			const conversations = Array.isArray(conversationOrArray) ? conversationOrArray : [conversationOrArray]
 			conversations.forEach(conversation => {
 				if (conversation.objectType === CONVERSATION.OBJECT_TYPE.BREAKOUT_ROOM) {
-					this.addBreakoutRoom(token, conversation)
+					this.addBreakoutRoom(token, conversation as BreakoutRoom)
 				}
 			})
 			store.dispatch('patchConversations', { conversations })
@@ -84,9 +97,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Purges breakout rooms from both stores.
 		 *
-		 * @param {string} token the parent room token;
+		 * @param token the parent room token;
 		 */
-		purgeBreakoutRoomsStore(token) {
+		purgeBreakoutRoomsStore(token: string) {
 			for (const roomToken in this.rooms[token]) {
 				store.dispatch('deleteConversation', roomToken)
 			}
@@ -96,10 +109,10 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Adds a breakout room to the store.
 		 *
-		 * @param {string} token the parent room token;
-		 * @param {object} breakoutRoom the breakout room.
+		 * @param token the parent room token;
+		 * @param breakoutRoom the breakout room.
 		 */
-		addBreakoutRoom(token, breakoutRoom) {
+		addBreakoutRoom(token: string, breakoutRoom: BreakoutRoom) {
 			if (!this.rooms[token]) {
 				Vue.set(this.rooms, token, {})
 			}
@@ -109,13 +122,13 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Creates breakout rooms for specified conversation.
 		 *
-		 * @param {object} payload the action payload;
-		 * @param {string} payload.token the parent room token;
-		 * @param {string} payload.mode the mode of the breakout rooms;
-		 * @param {number} payload.amount the amount of the breakout rooms to create;
-		 * @param {string} payload.attendeeMap the stringified JSON object with attendee map.
+		 * @param payload the action payload;
+		 * @param payload.token the parent room token;
+		 * @param payload.mode the mode of the breakout rooms;
+		 * @param payload.amount the amount of the breakout rooms to create;
+		 * @param payload.attendeeMap the stringified JSON object with attendee map.
 		 */
-		async configureBreakoutRooms({ token, mode, amount, attendeeMap }) {
+		async configureBreakoutRooms({ token, mode, amount, attendeeMap }: Payload<configureBreakoutRoomsParams>) {
 			try {
 				const response = await configureBreakoutRooms(token, mode, amount, attendeeMap)
 				this.processConversations(token, response.data.ocs.data)
@@ -135,11 +148,11 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Reassign participants to another breakout rooms.
 		 *
-		 * @param {object} payload the action payload;
-		 * @param {string} payload.token the parent room token;
-		 * @param {string} payload.attendeeMap the stringified JSON object with attendee map.
+		 * @param payload the action payload;
+		 * @param payload.token the parent room token;
+		 * @param payload.attendeeMap the stringified JSON object with attendee map.
 		 */
-		async reorganizeAttendees({ token, attendeeMap }) {
+		async reorganizeAttendees({ token, attendeeMap }: Payload<reorganizeAttendeesParams>) {
 			try {
 				const response = await reorganizeAttendees(token, attendeeMap)
 				this.processConversations(token, response.data.ocs.data)
@@ -156,9 +169,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Deletes configured breakout rooms for a given parent room token.
 		 *
-		 * @param {string} token the parent room token.
+		 * @param token the parent room token.
 		 */
-		async deleteBreakoutRooms(token) {
+		async deleteBreakoutRooms(token: string) {
 			try {
 				const response = await deleteBreakoutRooms(token)
 				// Update returned parent conversation
@@ -174,9 +187,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Get configured breakout rooms for a given parent room token.
 		 *
-		 * @param {string} token the parent room token.
+		 * @param token the parent room token.
 		 */
-		async getBreakoutRooms(token) {
+		async getBreakoutRooms(token: string) {
 			try {
 				const response = await getBreakoutRooms(token)
 				this.processConversations(token, response.data.ocs.data)
@@ -188,9 +201,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Start a breakout rooms session for a given parent room token.
 		 *
-		 * @param {string} token the parent room token.
+		 * @param token the parent room token.
 		 */
-		async startBreakoutRooms(token) {
+		async startBreakoutRooms(token: string) {
 			try {
 				const response = await startBreakoutRooms(token)
 				this.processConversations(token, response.data.ocs.data)
@@ -203,9 +216,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Stop a breakout rooms session for a given parent room token.
 		 *
-		 * @param {string} token the parent room token.
+		 * @param token the parent room token.
 		 */
-		async stopBreakoutRooms(token) {
+		async stopBreakoutRooms(token: string) {
 			try {
 				const response = await stopBreakoutRooms(token)
 				this.processConversations(token, response.data.ocs.data)
@@ -218,11 +231,11 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Send a message to all breakout rooms for a given parent room token.
 		 *
-		 * @param {object} payload the action payload;
-		 * @param {string} payload.token the parent room token;
-		 * @param {string} payload.message the message text.
+		 * @param payload the action payload;
+		 * @param payload.token the parent room token;
+		 * @param payload.message the message text.
 		 */
-		async broadcastMessageToBreakoutRooms({ token, message }) {
+		async broadcastMessageToBreakoutRooms({ token, message }: Payload<broadcastChatMessageParams>) {
 			try {
 				await broadcastMessageToBreakoutRooms(token, message)
 			} catch (error) {
@@ -234,12 +247,12 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Update a participants in breakout rooms for a given token.
 		 *
-		 * @param {string} token the parent room token.
+		 * @param token the parent room token.
 		 */
-		async fetchBreakoutRoomsParticipants(token) {
+		async fetchBreakoutRoomsParticipants(token: string) {
 			try {
 				const response = await getBreakoutRoomsParticipants(token)
-				const splittedParticipants = response.data.ocs.data.reduce((acc, participant) => {
+				const splittedParticipants = response.data.ocs.data.reduce((acc: Record<string, Participant[]>, participant) => {
 					if (!acc[participant.roomToken]) {
 						acc[participant.roomToken] = []
 					}
@@ -258,9 +271,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Notify moderators when raise a hand in a breakout room with given token.
 		 *
-		 * @param {string} token the breakout room token.
+		 * @param token the breakout room token.
 		 */
-		async requestAssistance(token) {
+		async requestAssistance(token: string) {
 			try {
 				const response = await requestAssistance(token)
 				const parentToken = response.data.ocs.data.objectId
@@ -274,9 +287,9 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Dismiss a notification about raised hand for a breakout room with given token.
 		 *
-		 * @param {string} token the breakout room token.
+		 * @param token the breakout room token.
 		 */
-		async dismissRequestAssistance(token) {
+		async dismissRequestAssistance(token: string) {
 			try {
 				const response = await resetRequestAssistance(token)
 				const parentToken = response.data.ocs.data.objectId
@@ -290,11 +303,11 @@ export const useBreakoutRoomsStore = defineStore('breakoutRooms', {
 		/**
 		 * Switch between breakout rooms if participant is allowed to choose the room freely
 		 *
-		 * @param {object} payload the action payload;
-		 * @param {string} payload.token the parent room token;
-		 * @param {string} payload.target the breakout room token.
+		 * @param payload the action payload;
+		 * @param payload.token the parent room token;
+		 * @param payload.target the breakout room token.
 		 */
-		async switchToBreakoutRoom({ token, target }) {
+		async switchToBreakoutRoom({ token, target }: Payload<switchToBreakoutRoomParams>) {
 			try {
 				const response = await switchToBreakoutRoom(token, target)
 				this.processConversations(token, response.data.ocs.data)
